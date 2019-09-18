@@ -49,7 +49,9 @@ if(isset($_GET['json'])){
 		$tmparr[$x]['loginname'] = trim($_group->_array[2][$_grpwahl][$x]);	
 		$tmparr[$x]['pfad'] = trim($_group->_array[3][$_grpwahl][$x]);
 		// Mitarbeiter - Name
-		$tmparr[$x]['username'] = trim($_group->_array[4][$_grpwahl][$x]);	
+        $name = explode(" ", trim($_group->_array[4][$_grpwahl][$x]));
+		$tmparr[$x]['firstname'] = $name[0];
+        $tmparr[$x]['lastname'] = @$name[1];
 		//Anwesend oder nicht
 		$tmparr[$x]['anwesend'] = (count($_group->_array[5][$_grpwahl][$x]))%2;	
 		if($tmparr[$x]['anwesend']){
@@ -88,122 +90,117 @@ if(isset($_GET['json'])){
 			<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
 			<!--<meta http-equiv="refresh" content="10">-->
 			<title>SmallTime - Touch - Screen - Stempelterminal</title>
-			<link href='https://fonts.googleapis.com/css?family=Rambla:400,700' rel='stylesheet' type='text/css'>
-			<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-			<link href='https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,400italic,700italic,700' rel='stylesheet' type='text/css'>		
-			<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.js"></script>		
-			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/css/materialize.min.css">
-			<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/js/materialize.min.js"></script>		
+            <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet">
+            <link href='templates/smalltime/css/terminal.css' rel='stylesheet' type='text/css'>
+			<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.js"></script>
 			<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css">	
-			<script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.js"></script>		
-			<style>
-				body{
-					background-color: #70858f;
-					font-size: 0.8em;
-				}
-				.alert-danger, .alert-error {
-					background-color: #e9c7c7;
-					border-color: #da9e9e;
-				}
-				.alert-success {
-					background-color: #d1e9c7;
-					border-color: #A6C48D;
-				}
-				.alert {
-					padding: 6px 6px 6px 6px;
-					margin-bottom: 20px;
-					text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-					/*background-color: #fcf8e3;*/
-					border: 1px solid #fbeed5;
-					-webkit-border-radius: 0px;
-					-moz-border-radius: 0px;
-					border-radius: 0px;
-					color: #000000;
-				}
-				table{
-					margin-top: 2em;
-				}
-				.mitarbeiter{
-					display: -ms-flex; 
-					display: -webkit-flex; 
-					display: flex;
-					margin: 10px;
-				}
-				.bild{
-					-webkit-flex: 1;
-					flex: 1;
-					-webkit-order: 1;
-					order: 1;
-				}
-				.bild img{
-					        width: 100%;
-				}
-				.name{
-					-webkit-flex: 2;
-					flex: 2;
-					-webkit-order: 2;
-					order: 2;
-				}
-				.row{
-				}
-				nav ul li.active {
-					background-color: rgba(0, 0, 0, 0.6);
-				}
-				.container .row {
-					margin-left: 0;
-					margin-right: 0;
-				}
-				@media only screen and (min-width: 1200px){
-					.container{
-						width: 80%;
-						max-width: 1600px;
-					}
-				}
-				@media only screen and (min-width: 993px){
-					.container{
-						width: 95%;
-					}	
-				}
-				@media only screen and (min-width: 601px){
-					.container{
-						width: 95%;
-					}	
-				}
-			</style>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.js"></script>
+            <script src="js/sha1.min.js"></script>
 			<script>
-				(function($)
-					{
-						$(function()
-							{	
-								$(".button-collapse").sideNav();
-									
-							
-							}); // End Document Ready
-					})(jQuery); // End of jQuery name space 	
+                function pad(num, size) {
+                    var s = num+"";
+                    while (s.length < size) s = "0" + s;
+                    return s;
+                }
+
+                function num(val) {
+                    $('#pin').val($('#pin').val()+val);
+                }
+
+                function rem() {
+                    $('#pin').val($('#pin').val().slice(0, -1));
+                }
+
+                function login() {
+                    if($(".mitarbeiter.selected").length == 0) {
+                        alert("Bitte erst Namen auswählen!");
+                        return;
+                    }
+
+                    if($(".selected").data("pin") != sha1($("#pin").val())) {
+                        alert("PIN falsch!");
+                        $("#pin").val('');
+                        return;
+                    }
+
+                    hash = $(".selected").data("hash");
+
+                    $("#pin").val('');
+
+                    mastempeln(hash, function () {
+                        $.ajax(
+                        {
+                            url: 'android.php?rfid=' + $(".selected").data("path") + '&action=getvar&class=_jahr&var=_summe_t',
+                            type: 'get',
+                            dataType: 'text',
+                            async: true,
+                            success: function(saldo)
+                            {
+                                if(saldo > 0) {
+                                    stunden = Math.floor(saldo)
+                                    $("#saldo").removeClass("red");
+                                    $("#saldo").addClass("green");
+                                } else {
+                                    stunden = Math.ceil(saldo)
+                                    $("#saldo").removeClass("green");
+                                    $("#saldo").addClass("red")
+                                }
+
+                                minuten = saldo - stunden;
+                                minuten = Math.round(minuten * 60);
+
+                                if(minuten < 0) minuten *= -1
+
+                                $("#saldo").html(stunden + "h " + minuten + "min");
+
+                                $("#shadow").show();
+                                $("#details").show();
+                            }
+                        });
+                    });
+                }
+
+                function logoff() {
+                    $(".selected").removeClass("selected");
+                    $("#name").html("");
+                    $("#shadow").hide();
+                    $("#details").hide();
+                }
+
+                $(function() {
+                    setInterval(function () {
+                        const heute = new Date();
+                        $("#currentTime").html(pad(heute.getDate(), 2) + "." + pad(heute.getMonth()+1, 2) + "." + heute.getFullYear() +
+                            " " + pad(heute.getHours(), 2) + ":" + pad(heute.getMinutes(), 2) + ":" + pad(heute.getSeconds(), 2) + " Uhr");
+                    }, 1000);
+
+                    $(document).on('click', '.mitarbeiter', function() {
+                        $(".mitarbeiter").removeClass("selected");
+                        $(this).addClass("selected");
+
+                        $("#name").html(" " + $(this).data('name'));
+                    });
+                });
+
 				function start(){
 					uebersicht('?gruppe=<?php echo $gruppe; ?>&json');
-					//uebersicht('repmo_json.php?group=<?php echo $_grpwahl; ?>&json');
 				}
-				function mastempeln(str){
-					console.log(str);
-					idtime(str);
+
+				function mastempeln(str, cb=null){
+                    $.ajax(
+                    {
+                        url: 'idtime.php?id=' + str + '&w=no',
+                        type: 'get',
+                        dataType: 'text',
+                        async: true,
+                        success: function(response)
+                        {
+                            uebersicht('?gruppe=<?php echo $gruppe; ?>&json');
+                            if(cb!=null) cb();
+                        }
+                    });
 				}
-				function idtime(id)
-				{
-					$.ajax(
-						{
-							url: 'idtime.php?id=' + id + '&w=no',
-							//url: url,
-							type: 'get',
-							dataType: 'text',
-							async: true,
-							success: function(response)
-							{
-								console.log(response);
-								uebersicht('?gruppe=<?php echo $gruppe; ?>&json');
-							}
-						});
-				}		
+
 				function uebersicht(url)
 				{
 					$.ajax(
@@ -224,9 +221,9 @@ if(isset($_GET['json'])){
 									var new_panel = panel.clone();
 									// Tabelle farblich unterscheiden
 									if (response[i].anwesend == 1) {
-										new_panel.find('.mitarbeiter').addClass('green lighten-1');
+										new_panel.find('.mitarbeiter').addClass('green');
 									} else {
-										new_panel.find('.mitarbeiter').addClass('deep-orange accent-2');
+										new_panel.find('.mitarbeiter').addClass('red');
 									}
 									//<img src="{{bild}}" alt="{{username}}" />
 									new_panel.find('#img').html('<img src="'+ response[i].bild+'" alt="'+ response[i].username+'" />');
@@ -240,55 +237,58 @@ if(isset($_GET['json'])){
 			</script>
 		</head>	
 		<body onload="start();">
-			<!--  NAVIGATION !-->
-			<nav class="navbar blue-grey darken-3" role="navigation">
-				<div class="nav-wrapper container">
-					<a id="logo-container" href="?" class="brand-logo"><span class="fa fa-fw fa-home fa-1x"></span>Home</a>
-					<a href="#" data-activates="mobile-demo" class="button-collapse"><i class="material-icons">menu</i></a>
-					<ul class="right hide-on-med-and-down">
-						<?php 
-						$i=2;
-						foreach($_group->_array[0] as $gruppen){
-							echo '<li ';
-							if(intval($gruppe)==$i)  echo 'class="active" '; 
-							echo 'id="menue'.$i.'" ><a href="?gruppe='.$i.'" id="seite'.$i.'"><i class="fa fa-users fa-2"></i> '. $gruppen[0]. '</a></li>';
-							$i++;
-						}
-						echo '<li ><a href="index.php" target="_new"><i class="fa fa-home fa-2"></i> Index.php</a></li>';
-						echo '<li ><a href="admin.php" target="_new"><i class="fa fa-lock fa-2"></i> Admin.php</a></li>';
-						echo '</ul><ul class="side-nav" id="mobile-demo">';
-						$i=2;
-						foreach($_group->_array[0] as $gruppen){
-							echo '<li ';
-							if(intval($gruppe)==$i) echo 'class="active" '; 
-							echo 'id="mobmenue'.$i.'"><a href="?gruppe='.$i.'" id="mobseite'.$i.'"><i class="fa fa-users fa-2"></i> '. $gruppen[0].'</a></li>';
-							$i++;
-						}
-						echo '<li ><a href="index.php" target="_new"><i class="fa fa-home fa-2"></i> Index.php</a></li>';
-						echo '<li ><a href="admin.php" target="_new"><i class="fa fa-lock fa-2"></i> Admin.php</a></li>';
-						?>
-					</ul>
-				</div>
-			</nav>
+			<!--  HEADER !-->
+			<header>
+                <a href="?"><img src="images/logo_sit.png" height="40"/></a>
+			</header>
+
 			<!--  CONTENT  !-->
-			<div class="container" id="ContentHTML">
-				<div class="container">
-					<div id="maanzeige" class="row"></div>
-					<div id="matemplate"  style="visibility: hidden">
-						<div class="col s12 m6 l4">
-							<div class=" mitarbeiter " onclick="mastempeln('{{idtime}}')" >
-								<div class="bild" id="img"><img src="{{bild}}" alt="{{username}}"  /></div>
-								<div class="name"><h5>{{username}}</h5><p>
-									{{alltime}}
-									<hr>
-									 {{status}} seit: {{lasttime}}</p>
-								</div>
-							</div>
-						</div>
-						
-					</div>
-				</div>
-			</div>
+			<div class="content">
+                <div class="container-ma" id="maanzeige">
+                </div>
+
+                <div class="container-pin">
+                    <h1>Guten Tag<span id="name"></span>,</h1>
+                    <hr />
+                    <p>
+                        <strong>Aktuelles Datum und Uhrzeit:</strong><br />
+                        <span id="currentTime"></span>
+                    </p>
+
+                    <p>
+                        <strong>Bitte geben Sie Ihre PIN ein:</strong><br>
+                        <input type="password" id="pin" disabled>
+                    </p>
+
+                    <div class="pinpad">
+                        <div class="number" onclick="num('1');">1</div> <div class="number" onclick="num('2');">2</div> <div class="number" onclick="num('3');">3</div>
+                        <div class="number" onclick="num('4');">4</div> <div class="number" onclick="num('5');">5</div> <div class="number" onclick="num('6');">6</div>
+                        <div class="number" onclick="num('7');">7</div> <div class="number" onclick="num('8');">8</div> <div class="number" onclick="num('9');">9</div>
+                        <div class="number"></div> <div class="number" onclick="num('0');">0</div> <div class="number" onclick="rem();"><i class="fa fa-caret-square-o-left" aria-hidden="true"></i></div>
+                    </div>
+
+                    <div class="login" onclick="login();">OK</div>
+                </div>
+            </div>
+
+            <!-- DETAILS -->
+            <div id="shadow"></div>
+            <div id="details">
+                <p>Stundenkonto:</p>
+                <p id="saldo" class="green">50</p>
+                <div class="btn" onclick="logoff();">OK</div>
+            </div>
+
+            <!--  TEMPLATES  !-->
+            <div id="matemplate"  style="visibility: hidden">
+                <div class="mitarbeiter" data-hash="{{idtime}}" data-pin="{{passwort}}" data-name="{{firstname}} {{lastname}}" data-path="{{pfad}}">
+                    <div class="bild"><img src="{{bild}}" alt="{{username}}" height="50" /></div>
+                    <div class="name">
+                        <div class="firstname">{{firstname}}</div>
+                        <div class="lastname">{{lastname}}</div>
+                    </div>
+                </div>
+            </div>
 		</body>
 	</html> 
 	<?php

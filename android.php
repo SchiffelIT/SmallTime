@@ -1,4 +1,5 @@
 <?php
+error_reporting(0);
 session_start();
 date_default_timezone_set("Europe/Paris");
 @setlocale(LC_TIME, 'de_DE.UTF-8', 'de_DE@euro', 'de_DE', 'de-DE', 'de', 'ge', 'de_DE.UTF-8', 'German');
@@ -28,7 +29,7 @@ if(isset($_GET['rfid'])){
 	@fgets($fp); // erste Zeile überspringen
 	$u    = 1;
 	while(($logindata = fgetcsv($fp, 0, ';')) != false){
-		if(@$logindata[3] == $rfid ){
+		if(@$logindata[1] == $rfid ){
 			//erste Spalte der Datei "./Data / user.txt" ist der Pfad des users
 			$user = $logindata[0];
 			$login= true;
